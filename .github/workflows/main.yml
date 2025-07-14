@@ -9,18 +9,26 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout with full history and PAT
+      - name: Minimal checkout (no auto fetch)
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          token: ${{ secrets.WORKFLOW_TOKEN }}      # ← 用你的 Classic PAT
-          persist-credentials: true                  # ← 确保后续 git fetch/push 都用这个凭据
+          fetch-tags: false      # 禁用自动抓标签，避免用到匿名凭据
+          persist-credentials: false  # 禁用默认凭据注入
 
-      - name: Add upstream remote
+      - name: Configure origin to use PAT
+        run: |
+          # 用你的 PAT 把 origin remote URL 直接换成带 Token 的形式
+          git remote set-url origin https://x-access-token:${{ secrets.WORKFLOW_TOKEN }}@github.com/${{ github.repository }}.git
+          # 然后主动抓 origin 的分支和标签
+          git fetch origin --prune --tags
+          git checkout main     # 或你默认的分支名
+
+      - name: Add upstream remote & fetch tags
         run: |
           git remote add upstream https://github.com/homuler/MediaPipeUnityPlugin.git
           git fetch upstream --tags
 
-      - name: Push tags to origin
+      - name: Push tags back to origin
         run: |
-          git push origin --tags                    # ← 会走上面注入的 PAT
+          git push origin --tags
