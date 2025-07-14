@@ -1,4 +1,5 @@
 name: ⏳ Sync upstream Releases
+
 on:
   schedule:
     - cron: '0 2 * * *'
@@ -12,7 +13,8 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          token: ${{ secrets.WORKFLOW_TOKEN }}    # ← 这里用你的 Classic PAT
+          token: ${{ secrets.WORKFLOW_TOKEN }}      # ← 用你的 Classic PAT
+          persist-credentials: true                  # ← 确保后续 git fetch/push 都用这个凭据
 
       - name: Add upstream remote
         run: |
@@ -20,4 +22,5 @@ jobs:
           git fetch upstream --tags
 
       - name: Push tags to origin
-        run: git push origin --tags            # ← 这时就会走上面注入的 PAT
+        run: |
+          git push origin --tags                    # ← 会走上面注入的 PAT
