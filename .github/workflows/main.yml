@@ -8,29 +8,29 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+
     steps:
-      # 1. 把 PAT 写入 ~/.netrc，所有后续 git clone/fetch/push 都会用它
+      # 1) Write your PAT into ~/.netrc
       - name: Setup Git authentication
         run: |
           printf "machine github.com\nlogin x-access-token\npassword ${{ secrets.WORKFLOW_TOKEN }}\n" > ~/.netrc
           chmod 600 ~/.netrc
 
-      # 2. 用 checkout 拉仓库，不指定 token，就会走 ~/.netrc
+      # 2) Checkout (will automatically use netrc)
       - name: Checkout with full history
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      # 3. 添加 upstream 并抓标签
+      # 3) Fetch upstream tags
       - name: Add upstream remote & fetch tags
         run: |
           git remote add upstream https://github.com/homuler/MediaPipeUnityPlugin.git
           git fetch upstream --tags
 
-      # 4. 按默认分支推标签回 origin
-      - name: Push tags to origin (force)
+      # 4) Push tags back (force if necessary)
+      - name: Push tags to origin
         run: |
           default_branch=$(git remote show origin \
             | sed -n -e '/HEAD branch/s/.*: //p')
           git push origin --tags --force
-
