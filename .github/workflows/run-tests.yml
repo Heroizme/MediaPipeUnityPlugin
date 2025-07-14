@@ -13,7 +13,8 @@ jobs:
       - name: Checkout with full history
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0       # 拉取所有提交和标签
+          fetch-depth: 0
+          token: ${{ secrets.WORKFLOW_TOKEN }}     # ← 关键：用你新建的 PAT 来克隆并给后续 push 授权
 
       - name: Add upstream remote
         run: |
@@ -21,8 +22,6 @@ jobs:
           git fetch upstream --tags
 
       - name: Push tags to origin
-        # 使用默认的 GITHUB_TOKEN 即可推送标签
-        env:
-          GITHUB_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
-        run: |
-          git push origin --tags
+        run: git push origin --tags
+        # 不再需要单独在这里声明 env，因为 checkout 已经用 PAT 设置好了凭据
+
