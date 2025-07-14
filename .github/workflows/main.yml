@@ -1,17 +1,26 @@
-name: 🔄 Auto-sync upstream Release tag
+name: ⏳ Sync upstream Releases
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 3 * * *'
+    - cron: '0 2 * * *'
+  workflow_dispatch:
 
 jobs:
-  tag:
+  sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Create upstream version tag
-        uses: DataDog/sync-upstream-release-tag@v0.1.0
+      - name: Checkout with full history and PAT
+        uses: actions/checkout@v3
         with:
-          github_actor: "${{ github.actor }}"
-          github_repository: "${{ github.repository }}"
-          github_token: ${{ secrets.WORKFLOW_TOKEN }}
+          fetch-depth: 0
+          token: ${{ secrets.WORKFLOW_TOKEN }}      # ← 用你的 Classic PAT
+          persist-credentials: true                  # ← 确保后续 git fetch/push 都用这个凭据
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/homuler/MediaPipeUnityPlugin.git
+          git fetch upstream --tags
+
+      - name: Push tags to origin
+        run: |
+          git push origin --tags                    # ← 会走上面注入的 PAT
