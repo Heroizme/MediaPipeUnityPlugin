@@ -1,20 +1,18 @@
 name: ⏳ Sync upstream Releases
-
-# 定时每天同步，也可监听仓库 dispatch
 on:
   schedule:
-    - cron: '0 2 * * *'     # 每天 UTC 2:00（北京时间 10:00）执行
-  workflow_dispatch:        # 可手动触发
+    - cron: '0 2 * * *'
+  workflow_dispatch:
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout with full history
+      - name: Checkout with full history and PAT
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          token: ${{ secrets.WORKFLOW_TOKEN }}     # ← 确保所有后续 git push 都用这个 PAT
+          token: ${{ secrets.WORKFLOW_TOKEN }}    # ← 这里用你的 Classic PAT
 
       - name: Add upstream remote
         run: |
@@ -22,6 +20,4 @@ jobs:
           git fetch upstream --tags
 
       - name: Push tags to origin
-        run: git push origin --tags
-
-
+        run: git push origin --tags            # ← 这时就会走上面注入的 PAT
