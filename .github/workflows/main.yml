@@ -1,0 +1,17 @@
+name: 🔄 Auto-sync upstream Release tag
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create upstream version tag
+        uses: DataDog/sync-upstream-release-tag@v0.1.0
+        with:
+          github_actor: "${{ github.actor }}"
+          github_repository: "${{ github.repository }}"
+          github_token: ${{ secrets.WORKFLOW_TOKEN }}
