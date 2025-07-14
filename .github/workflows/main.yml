@@ -2,38 +2,36 @@ name: 🔁 Sync upstream Releases via API
 
 on:
   schedule:
-    - cron: '0 2 * * *'      # 每天 UTC 2:00 同步
+    - cron: '0 2 * * *'      # 每天 UTC 2:00 同步（北京时间 10:00）
   workflow_dispatch:         # 手动触发
 
 permissions:
-  contents: write            # 创建 Release 需要写内容权限
-  packages: read             # 读取 assets
-  id-token: write            # 如果你用 OIDC 获取令牌（可选）
+  contents: write            # 创建 release 需要写权限
 
 jobs:
   sync_releases:
     runs-on: ubuntu-latest
+
     steps:
-
-      - name: Checkout (仅用于 github-script 上下文)
+      - name: Checkout for GitHub context
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
 
-      - name: Install jq for JSON parsing
-        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Install node-fetch polyfill
+        run: npm install node-fetch@2
 
       - name: Sync Releases from upstream
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.WORKFLOW_TOKEN }}  # 或直接使用 GITHUB_TOKEN（带写权限）
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const fetch = require('node-fetch');  // 用于获取二进制数据
+
             const upstreamOwner = 'homuler';
             const upstreamRepo  = 'MediaPipeUnityPlugin';
             const myOwner       = context.repo.owner;
             const myRepo        = context.repo.repo;
 
-            // 1. 获取上游所有 releases
+            // 获取上游所有 releases（公开仓库，无需授权）
             const upstreamReleases = await github.rest.repos.listReleases({
               owner: upstreamOwner,
               repo: upstreamRepo,
@@ -41,21 +39,20 @@ jobs:
             });
 
             for (const rel of upstreamReleases.data) {
-              // 2. 检查目标仓库是否已有该 tagName 的 Release
-              let exists;
+              // 检查 fork 是否已有该 release
+              let exists = true;
               try {
                 await github.rest.repos.getReleaseByTag({
                   owner: myOwner,
                   repo: myRepo,
                   tag: rel.tag_name
                 });
-                exists = true;
-              } catch (e) {
+              } catch {
                 exists = false;
               }
 
               if (!exists) {
-                // 3. 创建 Release
+                // 创建 release
                 const created = await github.rest.repos.createRelease({
                   owner: myOwner,
                   repo: myRepo,
@@ -65,31 +62,35 @@ jobs:
                   draft: rel.draft,
                   prerelease: rel.prerelease
                 });
-                console.log(`Created release ${rel.tag_name}`);
+                console.log(`✅ Created release ${rel.tag_name}`);
 
-                // 4. 复制 assets
+                // 获取 assets 并上传到新 release
                 const assets = await github.rest.repos.listReleaseAssets({
                   owner: upstreamOwner,
                   repo: upstreamRepo,
                   release_id: rel.id
                 });
+
                 for (const asset of assets.data) {
-                  // 下载二进制数据
-                  const download = await github.request({
-                    url: asset.url,
-                    headers: { accept: 'application/octet-stream' }
+                  const downloadUrl = asset.url;
+                  const response = await fetch(downloadUrl, {
+                    headers: {
+                      accept: 'application/octet-stream',
+                      'user-agent': 'github-script'
+                    }
                   });
-                  // 上传到新 Release
+                  const arrayBuffer = await response.arrayBuffer();
+
                   await github.rest.repos.uploadReleaseAsset({
                     owner: myOwner,
                     repo: myRepo,
                     release_id: created.data.id,
                     name: asset.name,
-                    data: download.data
+                    data: Buffer.from(arrayBuffer)
                   });
-                  console.log(`  + asset: ${asset.name}`);
+                  console.log(`  + 🗂️  Synced asset: ${asset.name}`);
                 }
               } else {
-                console.log(`Release ${rel.tag_name} already exists, skipping.`);
+                console.log(`⏭️ Release ${rel.tag_name} already exists, skipping.`);
               }
             }
