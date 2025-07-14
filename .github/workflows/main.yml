@@ -16,13 +16,20 @@ jobs:
           fetch-tags: false      # 禁用自动抓标签，避免用到匿名凭据
           persist-credentials: false  # 禁用默认凭据注入
 
-      - name: Configure origin to use PAT
+      - name: Configure origin to use PAT and checkout default branch
         run: |
-          # 用你的 PAT 把 origin remote URL 直接换成带 Token 的形式
+          # 用你的 PAT 重设 origin
           git remote set-url origin https://x-access-token:${{ secrets.WORKFLOW_TOKEN }}@github.com/${{ github.repository }}.git
-          # 然后主动抓 origin 的分支和标签
+
+          # 抓取 origin 的所有分支和标签
           git fetch origin --prune --tags
-          git checkout main     # 或你默认的分支名
+
+          # 动态获取 origin 的默认分支名称，比如 master 或 main
+          default_branch=$(git remote show origin | sed -n -e '/HEAD branch/s/.*: //p')
+
+          # 切换到这个默认分支
+          git checkout "$default_branch"
+
 
       - name: Add upstream remote & fetch tags
         run: |
