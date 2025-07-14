@@ -28,7 +28,9 @@ jobs:
           git fetch upstream --tags
 
       # 4. 按默认分支推标签回 origin
-      - name: Push tags to origin
+      - name: Push tags to origin (force)
         run: |
-          default_branch=$(git remote show origin | sed -n -e '/HEAD branch/s/.*: //p')
-          git push origin --tags
+          default_branch=$(git remote show origin \
+            | sed -n -e '/HEAD branch/s/.*: //p')
+          git push origin --tags --force
+
